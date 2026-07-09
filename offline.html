@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golf Tracker - Offline</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+      color: white;
+      text-align: center;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 400px;
+    }
+    h1 {
+      font-size: 3rem;
+      margin: 0 0 1rem 0;
+    }
+    p {
+      font-size: 1.125rem;
+      line-height: 1.6;
+      margin: 0 0 2rem 0;
+    }
+    button {
+      padding: 1rem 2rem;
+      background: white;
+      color: #2e7d32;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⛳</div>
+    <h1>You're Offline</h1>
+    <p>
+      To use Golf Tracker offline, you need to open it <strong>while online</strong> at least once after installation.
+    </p>
+    <p>
+      This allows the app to cache everything it needs to work without internet.
+    </p>
+    <button onclick="retry()">Try Again</button>
+  </div>
+
+  <script>
+    function retry() {
+      window.location.reload();
+    }
+
+    // Auto-retry when coming back online
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

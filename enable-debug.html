@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enable Debug Mode</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    button {
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      margin: 0.5rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    .enable {
+      background: #2e7d32;
+      color: white;
+    }
+    .disable {
+      background: #d32f2f;
+      color: white;
+    }
+    .status {
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 8px;
+      background: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <h1>Golf Tracker Debug Mode</h1>
+  <p>Debug mode shows a panel at the bottom of the app with:</p>
+  <ul>
+    <li>Service worker status</li>
+    <li>Cache status</li>
+    <li>IndexedDB status</li>
+    <li>Console logs</li>
+  </ul>
+
+  <div class="status" id="status">
+    Checking...
+  </div>
+
+  <button class="enable" onclick="enable()">Enable Debug Mode</button>
+  <button class="disable" onclick="disable()">Disable Debug Mode</button>
+
+  <script>
+    function checkStatus() {
+      const enabled = localStorage.getItem('debug_mode') === 'true';
+      document.getElementById('status').textContent =
+        enabled ? '✅ Debug mode is ENABLED' : '❌ Debug mode is DISABLED';
+    }
+
+    function enable() {
+      localStorage.setItem('debug_mode', 'true');
+      alert('Debug mode enabled! Reload the app to see the debug panel.');
+      checkStatus();
+    }
+
+    function disable() {
+      localStorage.removeItem('debug_mode');
+      alert('Debug mode disabled! Reload the app.');
+      checkStatus();
+    }
+
+    checkStatus();
+  </script>
+</body>
+</html>

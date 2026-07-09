@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#2e7d32"/>
+  <circle cx="256" cy="180" r="40" fill="white"/>
+  <path d="M256 220 L256 420" stroke="white" stroke-width="8" fill="none"/>
+  <path d="M180 420 L332 420" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <ellipse cx="256" cy="430" rx="80" ry="15" fill="rgba(255,255,255,0.3)"/>
+  <text x="256" y="480" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">⛳</text>
+</svg>
