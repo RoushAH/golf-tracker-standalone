@@ -1,7 +1,9 @@
 // Explicit service worker registration fallback
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    const base = document.querySelector('base')?.href || window.location.origin + '/';
+    const swPath = new URL('sw.js', base).pathname;
+    navigator.serviceWorker.register(swPath)
       .then(registration => {
         console.log('✅ Service Worker registered:', registration.scope);
 
