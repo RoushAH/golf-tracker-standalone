@@ -43,7 +43,9 @@ src/
 ├── services/
 │   ├── storage.js             IndexedDB access (db: golf_tracker_local)
 │   ├── seed.js                built-in drills, seeded on first run
-│   └── streak.js              consecutive-streak scoring
+│   ├── migrations.js          idempotent fixups for records already on devices
+│   ├── streak.js              consecutive-streak scoring
+│   └── strokeCount.js         ball-count scoring
 └── components/
     ├── DrillManager/          drill list + create form
     ├── DataEntry/             recording a practice session
@@ -63,8 +65,15 @@ All stores use `keyPath: 'id'` with **no** `autoIncrement`, so every record must
 `uuidv4()` at the point of creation. The built-in drill IDs in `seed.js` are hard-coded
 and must never change, since stored sessions reference them via `drill_type_id`.
 
-`DB_NAME` and `DB_VERSION` in `storage.js` must not change without a migration — users
-already have populated databases on their devices.
+`DB_NAME` and `DB_VERSION` in `storage.js` must not change without a schema migration —
+users already have populated databases on their devices.
+
+`services/migrations.js` runs on every start, after seeding, and fixes up records written
+by older versions of the app. It is not a schema migration: it adds no store and does not
+touch `DB_VERSION`. Each fixup must be idempotent and must skip records that are already
+correct, since rewriting a row bumps `updated_at` for nothing. There is one so far —
+stroke-count drills created before the form collected a ball count get
+`metadata.total_balls` written to the 9 the app was already assuming for them.
 
 Drills support four scoring types:
 

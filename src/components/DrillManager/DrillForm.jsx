@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { DEFAULT_TOTAL_BALLS } from '../../services/strokeCount';
+import { DEFAULT_TARGET_STREAK } from '../../services/streak';
 import './DrillManager.css';
 
 export default function DrillForm({ onSubmit, onCancel }) {
@@ -6,8 +8,8 @@ export default function DrillForm({ onSubmit, onCancel }) {
   const [description, setDescription] = useState('');
   const [scoringType, setScoringType] = useState('made_missed');
   const [categories, setCategories] = useState(['']);
-  const [totalBalls, setTotalBalls] = useState('9');
-  const [targetStreak, setTargetStreak] = useState('10');
+  const [totalBalls, setTotalBalls] = useState(String(DEFAULT_TOTAL_BALLS));
+  const [targetStreak, setTargetStreak] = useState(String(DEFAULT_TARGET_STREAK));
 
   const usesBallCount = scoringType === 'stroke_count';
   const usesStreakTarget = scoringType === 'consecutive_streak';

@@ -1,15 +1,15 @@
+import { totalBallsFor } from '../../services/strokeCount';
+import { targetStreakFor } from '../../services/streak';
 import './DrillManager.css';
 
 // Stroke-count drills are measured in balls, streak drills by their target; the rest
 // are described by how many categories they split attempts across.
 function describeScope(drill) {
   if (drill.scoring_type === 'stroke_count') {
-    const balls = drill.metadata?.total_balls;
-    return balls ? `${balls} balls` : null;
+    return `${totalBallsFor(drill)} balls`;
   }
   if (drill.scoring_type === 'consecutive_streak') {
-    const target = drill.metadata?.target_streak;
-    if (target) return `${target} in a row`;
+    return `${targetStreakFor(drill)} in a row`;
   }
   const count = drill.categories.length;
   return `${count} ${count === 1 ? 'category' : 'categories'}`;
@@ -30,9 +30,7 @@ export default function DrillList({ drills, onSelectDrill, onViewResults, onDele
               <p className="drill-description">{drill.description}</p>
               <div className="drill-meta">
                 <span className="badge">{drill.scoring_type.replace('_', ' ')}</span>
-                {describeScope(drill) && (
-                  <span className="category-count">{describeScope(drill)}</span>
-                )}
+                <span className="category-count">{describeScope(drill)}</span>
               </div>
             </div>
             {!drill.is_default && (

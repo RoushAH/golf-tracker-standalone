@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { storage } from './services/storage';
 import { seedDefaultDrills } from './services/seed';
+import { runMigrations } from './services/migrations';
 import DrillList from './components/DrillManager/DrillList';
 import DrillForm from './components/DrillManager/DrillForm';
 import DataEntry from './components/DataEntry/DataEntry';
@@ -26,6 +27,8 @@ function AppContent() {
 
   async function initializeApp() {
     await seedDefaultDrills();
+    // After seeding, so a fresh install doesn't run fixups against an empty store.
+    await runMigrations();
     await loadDrills();
     setLoading(false);
   }

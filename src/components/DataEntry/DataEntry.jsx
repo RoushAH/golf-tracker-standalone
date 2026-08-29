@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { storage } from '../../services/storage';
 import { summariseStreak, targetStreakFor } from '../../services/streak';
+import { totalBallsFor } from '../../services/strokeCount';
 import './DataEntry.css';
 
 export default function DataEntry({ drill, onComplete }) {
@@ -118,7 +119,7 @@ export default function DataEntry({ drill, onComplete }) {
     : null;
 
   if (drill.scoring_type === 'stroke_count') {
-    const totalBalls = drill.metadata?.total_balls || 9;
+    const totalBalls = totalBallsFor(drill);
 
     return (
       <div className="data-entry">
