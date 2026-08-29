@@ -89,6 +89,16 @@ on a random uuid and does not return records in tap order — `services/streak.j
 before scoring, and anything else reading streaks must go through it. A run does not
 carry across categories: each category is scored independently.
 
+Streak drills get two charts in Results rather than one, because a longest streak says
+nothing about what it cost: a best of 6 could be 6 balls or 40. So **Longest Streak** (with
+the target as a reference line, and the y-axis floor raised to the target so that line
+stays on screen when every session falls short) sits above **Balls per Session**. Recharts
+allows one child per `ResponsiveContainer`, so two charts means two containers.
+
+Sessions are only counted once `completed_at` is set. Leaving the Practice view without
+tapping Complete Session leaves the results in IndexedDB but invisible to Results, and
+there is deliberately no resume — re-entering Practice starts a new session.
+
 ### History
 
 This app began as a client/server monorepo at

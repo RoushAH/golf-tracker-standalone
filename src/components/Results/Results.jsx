@@ -14,6 +14,20 @@ function categoriesIn(results) {
   return [...new Set(results.map(categoryOf))];
 }
 
+// Recharts clones this with its own active/payload props. `labelKey` picks which
+// pre-formatted label off the data point to show, so one tooltip serves every chart.
+function SessionTooltip({ active, payload, labelKey = 'label' }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const point = payload[0].payload;
+  return (
+    <div className="custom-tooltip">
+      <p className="tooltip-label">Session {point.session}</p>
+      <p className="tooltip-date">{point.date}</p>
+      <p className="tooltip-value">{point[labelKey]}</p>
+    </div>
+  );
+}
+
 export default function Results({ drill }) {
   const [stats, setStats] = useState(null);
   const [progression, setProgression] = useState([]);
@@ -270,12 +284,15 @@ export default function Results({ drill }) {
     return `${session.average_strokes.toFixed(2)} avg`;
   }
 
-  // Prepare chart data
+  // Prepare chart data. `attempts` is only charted for streak drills, where how much you
+  // hit is not implied by the streak itself - a best of 6 could be 6 balls or 40.
   const chartData = progression.map((session, idx) => ({
     session: idx + 1,
     date: new Date(session.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     value: chartValue(session),
-    label: chartLabel(session)
+    label: chartLabel(session),
+    attempts: session.total_attempts,
+    attemptsLabel: `${session.total_attempts} ${session.total_attempts === 1 ? 'ball' : 'balls'}`
   }));
 
   return (
@@ -435,113 +452,106 @@ export default function Results({ drill }) {
 
       {progression.length > 0 && (
         <div className="progression">
-          <h3>Progress Over Time</h3>
+          {isStreakDrill ? (
+            <>
+              <h3>Longest Streak</h3>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis
+                      dataKey="session"
+                      label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      // Keep the target line on screen even while every session falls short of it.
+                      domain={[0, dataMax => Math.max(dataMax, stats.target)]}
+                      label={{ value: 'Best Streak', angle: -90, position: 'insideLeft' }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip content={<SessionTooltip />} />
+                    <ReferenceLine
+                      y={stats.target}
+                      stroke="#2e7d32"
+                      strokeDasharray="4 4"
+                      label={{ value: `Target ${stats.target}`, position: 'insideTopRight', fontSize: 11, fill: '#2e7d32' }}
+                    />
+                    <Bar dataKey="value" fill="#1976d2" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height={250}>
-              {drill.scoring_type === 'made_missed' ? (
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis
-                    dataKey="session"
-                    label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft' }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="custom-tooltip">
-                            <p className="tooltip-label">Session {payload[0].payload.session}</p>
-                            <p className="tooltip-date">{payload[0].payload.date}</p>
-                            <p className="tooltip-value">{payload[0].payload.label}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#2e7d32"
-                    strokeWidth={3}
-                    dot={{ fill: '#2e7d32', r: 5 }}
-                    activeDot={{ r: 7 }}
-                  />
-                </LineChart>
-              ) : isStreakDrill ? (
-                <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis
-                    dataKey="session"
-                    label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    domain={[0, dataMax => Math.max(dataMax, stats.target)]}
-                    label={{ value: 'Best Streak', angle: -90, position: 'insideLeft' }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="custom-tooltip">
-                            <p className="tooltip-label">Session {payload[0].payload.session}</p>
-                            <p className="tooltip-date">{payload[0].payload.date}</p>
-                            <p className="tooltip-value">{payload[0].payload.label}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <ReferenceLine
-                    y={stats.target}
-                    stroke="#2e7d32"
-                    strokeDasharray="4 4"
-                    label={{ value: `Target ${stats.target}`, position: 'insideTopRight', fontSize: 11, fill: '#2e7d32' }}
-                  />
-                  <Bar dataKey="value" fill="#1976d2" />
-                </BarChart>
-              ) : (
-                <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis
-                    dataKey="session"
-                    label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis
-                    label={{ value: 'Avg Strokes', angle: -90, position: 'insideLeft' }}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="custom-tooltip">
-                            <p className="tooltip-label">Session {payload[0].payload.session}</p>
-                            <p className="tooltip-date">{payload[0].payload.date}</p>
-                            <p className="tooltip-value">{payload[0].payload.label}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#ff9800" />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </div>
+              <h3>Balls per Session</h3>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis
+                      dataKey="session"
+                      label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      label={{ value: 'Balls Hit', angle: -90, position: 'insideLeft' }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip content={<SessionTooltip labelKey="attemptsLabel" />} />
+                    <Bar dataKey="attempts" fill="#7e57c2" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3>Progress Over Time</h3>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={250}>
+                  {drill.scoring_type === 'made_missed' ? (
+                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis
+                        dataKey="session"
+                        label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft' }}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip content={<SessionTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#2e7d32"
+                        strokeWidth={3}
+                        dot={{ fill: '#2e7d32', r: 5 }}
+                        activeDot={{ r: 7 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis
+                        dataKey="session"
+                        label={{ value: 'Session', position: 'insideBottom', offset: -5 }}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis
+                        label={{ value: 'Avg Strokes', angle: -90, position: 'insideLeft' }}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip content={<SessionTooltip />} />
+                      <Bar dataKey="value" fill="#ff9800" />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
 
           <h3>Session History</h3>
           <div className="progression-list">
@@ -564,6 +574,9 @@ export default function Results({ drill }) {
                     {isStreakDrill && (
                       <>
                         <span>{session.best_streak} in a row</span>
+                        <span>
+                          {session.total_attempts} {session.total_attempts === 1 ? 'ball' : 'balls'}
+                        </span>
                         <span className={session.target_reached ? 'success-rate' : ''}>
                           {session.target_reached
                             ? `🎯 cleared ${session.target}`
