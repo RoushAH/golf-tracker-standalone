@@ -3,6 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { storage } from './services/storage';
 import { seedDefaultDrills } from './services/seed';
 import { runMigrations } from './services/migrations';
+import {
+  findUnfinishedSessions,
+  completeSessions,
+  discardSessions
+} from './services/sessions';
 import DrillList from './components/DrillManager/DrillList';
 import DrillForm from './components/DrillManager/DrillForm';
 import DataEntry from './components/DataEntry/DataEntry';
@@ -25,6 +30,9 @@ function AppContent() {
   // The view we're trying to reach, held back until the leave prompt is answered.
   const [pendingView, setPendingView] = useState(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  // Sessions found stranded at startup, awaiting a keep-or-bin decision.
+  const [unfinished, setUnfinished] = useState([]);
+  const [isSweeping, setIsSweeping] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -34,8 +42,42 @@ function AppContent() {
     await seedDefaultDrills();
     // After seeding, so a fresh install doesn't run fixups against an empty store.
     await runMigrations();
+    await sweepUnfinishedSessions();
     await loadDrills();
     setLoading(false);
+  }
+
+  // The leave prompt can't catch a force-quit, so stranded sessions still happen. Clear the
+  // ones with nothing in them outright and ask about the rest.
+  async function sweepUnfinishedSessions() {
+    try {
+      const { litter, recoverable } = await findUnfinishedSessions();
+      if (litter.length > 0) {
+        await discardSessions(litter);
+        console.log(`🧹 Cleared ${litter.length} empty session(s)`);
+      }
+      setUnfinished(recoverable);
+    } catch (error) {
+      // Never block startup over this - the sessions stay stranded, which is the status quo.
+      console.error('Failed to sweep unfinished sessions:', error);
+    }
+  }
+
+  async function resolveUnfinished(keep) {
+    setIsSweeping(true);
+    try {
+      if (keep) {
+        await completeSessions(unfinished);
+      } else {
+        await discardSessions(unfinished.map(entry => entry.session));
+      }
+      setUnfinished([]);
+    } catch (error) {
+      console.error('Failed to resolve unfinished sessions:', error);
+      alert('Failed to update those sessions: ' + error.message);
+    } finally {
+      setIsSweeping(false);
+    }
   }
 
   async function loadDrills() {
@@ -216,6 +258,52 @@ function AppContent() {
 
         {view === 'settings' && <DataManager />}
       </main>
+
+      {unfinished.length > 0 && (
+        <div className="modal-overlay">
+          <div className="modal-content leave-prompt">
+            <div className="modal-header">
+              <h3>
+                {unfinished.length === 1
+                  ? 'Unfinished session'
+                  : `${unfinished.length} unfinished sessions`}
+              </h3>
+            </div>
+            <p>
+              Practice was recorded but never completed, so it isn't counted in your results.
+              Keep it to have it counted — you can still delete individual sessions from
+              Results afterwards.
+            </p>
+            <ul className="unfinished-list">
+              {unfinished.map(({ session, drill, attempts, lastActivityAt }) => (
+                <li key={session.id}>
+                  <span className="unfinished-drill">{drill.name}</span>
+                  <span className="unfinished-detail">
+                    {new Date(lastActivityAt).toLocaleDateString()} · {attempts}{' '}
+                    {attempts === 1 ? 'ball' : 'balls'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="leave-prompt-actions">
+              <button
+                className="btn-primary"
+                onClick={() => resolveUnfinished(true)}
+                disabled={isSweeping}
+              >
+                {isSweeping ? 'Working...' : 'Keep'}
+              </button>
+              <button
+                className="btn-danger"
+                onClick={() => resolveUnfinished(false)}
+                disabled={isSweeping}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingView && (
         <div className="modal-overlay">

@@ -128,7 +128,33 @@
   line-height: 1.5;
 }
 
-/* Discard sits apart from the two safe choices so it isn't the one you hit by accident. */
+.unfinished-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0 1.5rem;
+}
+
+.unfinished-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.unfinished-drill {
+  font-weight: 500;
+  color: #333;
+}
+
+.unfinished-detail {
+  color: #666;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* Discard sits apart from the safe choice so it isn't the one you hit by accident. */
 .leave-prompt-actions {
   display: flex;
   flex-wrap: wrap;

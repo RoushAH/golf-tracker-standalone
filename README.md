@@ -44,6 +44,7 @@ src/
 │   ├── storage.js             IndexedDB access (db: golf_tracker_local)
 │   ├── seed.js                built-in drills, seeded on first run
 │   ├── migrations.js          idempotent fixups for records already on devices
+│   ├── sessions.js            startup sweep for sessions left uncompleted
 │   ├── streak.js              consecutive-streak scoring
 │   └── strokeCount.js         ball-count scoring
 └── components/
@@ -102,9 +103,20 @@ prompts: complete it, discard it, or keep practising. `DataEntry` hands `App` a
 in `App`, but only `DataEntry` knows the session id. Discard is `deleteSession`, which
 cascades to the session's results.
 
-There is deliberately **no resume**: re-entering Practice always starts a new session. The
-prompt guards the in-app nav only — closing the tab or the app still leaves the session
-uncompleted, and nothing cleans those up.
+There is deliberately **no resume**: re-entering Practice always starts a new session.
+
+The prompt can only guard the in-app nav; force-quitting the app or closing the tab strands
+a session with no chance to intervene. So `services/sessions.js` sweeps for those on every
+start, and `App` offers the same two outcomes the prompt does — keep (stamp `completed_at`)
+or discard. Two details:
+
+- `completed_at` is dated to the **last recorded result**, not to `Date.now()`. A session
+  abandoned on Tuesday should not claim it finished whenever the app next happened to open.
+- Sessions with no results left, or whose drill has since been deleted, are binned without
+  asking. There is nothing to show for them and nothing to decide.
+
+The sweep runs before the first render, so the decision is made before any of that practice
+could show up in Results.
 
 ### History
 
