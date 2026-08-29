@@ -95,9 +95,16 @@ the target as a reference line, and the y-axis floor raised to the target so tha
 stays on screen when every session falls short) sits above **Balls per Session**. Recharts
 allows one child per `ResponsiveContainer`, so two charts means two containers.
 
-Sessions are only counted once `completed_at` is set. Leaving the Practice view without
-tapping Complete Session leaves the results in IndexedDB but invisible to Results, and
-there is deliberately no resume — re-entering Practice starts a new session.
+Sessions are only counted once `completed_at` is set, so an abandoned session would sit in
+IndexedDB invisible to Results forever. Navigating away from Practice mid-session therefore
+prompts: complete it, discard it, or keep practising. `DataEntry` hands `App` a
+`{ complete, discard }` pair while a session has taps but no `completed_at` — the nav lives
+in `App`, but only `DataEntry` knows the session id. Discard is `deleteSession`, which
+cascades to the session's results.
+
+There is deliberately **no resume**: re-entering Practice always starts a new session. The
+prompt guards the in-app nav only — closing the tab or the app still leaves the session
+uncompleted, and nothing cleans those up.
 
 ### History
 

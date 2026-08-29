@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { storage } from '../../services/storage';
 import { summariseStreak, targetStreakFor } from '../../services/streak';
 import { totalBallsFor } from '../../services/strokeCount';
 import './DataEntry.css';
 
-export default function DataEntry({ drill, onComplete }) {
+export default function DataEntry({ drill, onComplete, onPracticeInProgress }) {
   const [sessionId] = useState(uuidv4());
   const [results, setResults] = useState([]);
   const [currentCategory, setCurrentCategory] = useState(drill.categories[0]);
   const [isCompleting, setIsCompleting] = useState(false);
+
+  // The nav lives in App, so App is what has to intervene when you tap away from a session
+  // that has taps in it but no completed_at. Hand it the two ways out - it can't build them
+  // itself, since the session id only exists in here. Both read the session back out of
+  // storage rather than closing over `results`, so only the empty/non-empty flip matters.
+  useEffect(() => {
+    if (!onPracticeInProgress) return undefined;
+    onPracticeInProgress(
+      results.length > 0 ? { complete: persistCompletion, discard: discardSession } : null
+    );
+    return () => onPracticeInProgress(null);
+  }, [results.length > 0]);
 
   async function handleRecord(outcome) {
     const now = Date.now();
@@ -79,6 +91,25 @@ export default function DataEntry({ drill, onComplete }) {
     }
   }
 
+  // Stamping completed_at is what makes a session visible to Results; until then it is
+  // just rows in IndexedDB. Kept separate from handleComplete so the leave prompt in App
+  // can reuse it without also triggering this screen's navigation.
+  async function persistCompletion() {
+    const now = Date.now();
+    const session = await storage.getSession(sessionId);
+    if (session) {
+      // getSession() hydrates a `results` array onto the record for convenience;
+      // drop it before writing back so results aren't duplicated into the row.
+      const { results: _hydrated, ...record } = session;
+      await storage.saveSession({ ...record, completed_at: now, updated_at: now });
+    }
+  }
+
+  // deleteSession cascades to the session's results, so this leaves nothing behind.
+  async function discardSession() {
+    await storage.deleteSession(sessionId);
+  }
+
   async function handleComplete() {
     if (results.length === 0) {
       alert('Record at least one result before completing');
@@ -87,14 +118,7 @@ export default function DataEntry({ drill, onComplete }) {
 
     setIsCompleting(true);
     try {
-      const now = Date.now();
-      const session = await storage.getSession(sessionId);
-      if (session) {
-        // getSession() hydrates a `results` array onto the record for convenience;
-        // drop it before writing back so results aren't duplicated into the row.
-        const { results: _hydrated, ...record } = session;
-        await storage.saveSession({ ...record, completed_at: now, updated_at: now });
-      }
+      await persistCompletion();
       onComplete();
     } catch (error) {
       console.error('Failed to complete session:', error);

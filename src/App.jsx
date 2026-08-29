@@ -20,6 +20,11 @@ function AppContent() {
   const [selectedDrill, setSelectedDrill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDrillForm, setShowDrillForm] = useState(false);
+  // Set by DataEntry while a session has taps in it but no completed_at: { complete, discard }.
+  const [practiceInProgress, setPracticeInProgress] = useState(null);
+  // The view we're trying to reach, held back until the leave prompt is answered.
+  const [pendingView, setPendingView] = useState(null);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -89,6 +94,33 @@ function AppContent() {
     setView('results');
   }
 
+  // Every nav button goes through here. Leaving Practice mid-session used to just drop the
+  // session: the results stayed in IndexedDB but with no completed_at, so Results ignored
+  // them forever and re-entering Practice started a fresh session. Now you get asked.
+  function requestView(next) {
+    if (next === view) return;
+    if (view === 'entry' && practiceInProgress) {
+      setPendingView(next);
+      return;
+    }
+    setView(next);
+  }
+
+  async function resolveLeave(action) {
+    setIsLeaving(true);
+    try {
+      await practiceInProgress[action]();
+      setPracticeInProgress(null);
+      setView(pendingView);
+      setPendingView(null);
+    } catch (error) {
+      console.error(`Failed to ${action} session:`, error);
+      alert(`Failed to ${action} session: ${error.message}`);
+    } finally {
+      setIsLeaving(false);
+    }
+  }
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -105,7 +137,7 @@ function AppContent() {
         <nav className="app-nav">
           <button
             className={view === 'drills' ? 'active' : ''}
-            onClick={() => setView('drills')}
+            onClick={() => requestView('drills')}
           >
             Drills
           </button>
@@ -113,13 +145,13 @@ function AppContent() {
             <>
               <button
                 className={view === 'entry' ? 'active' : ''}
-                onClick={() => setView('entry')}
+                onClick={() => requestView('entry')}
               >
                 Practice
               </button>
               <button
                 className={view === 'results' ? 'active' : ''}
-                onClick={() => setView('results')}
+                onClick={() => requestView('results')}
               >
                 Results
               </button>
@@ -127,7 +159,7 @@ function AppContent() {
           )}
           <button
             className={view === 'settings' ? 'active' : ''}
-            onClick={() => setView('settings')}
+            onClick={() => requestView('settings')}
           >
             Settings
           </button>
@@ -168,7 +200,14 @@ function AppContent() {
         )}
 
         {view === 'entry' && selectedDrill && (
-          <DataEntry drill={selectedDrill} onComplete={() => setView('results')} />
+          <DataEntry
+            drill={selectedDrill}
+            onComplete={() => {
+              setPracticeInProgress(null);
+              setView('results');
+            }}
+            onPracticeInProgress={setPracticeInProgress}
+          />
         )}
 
         {view === 'results' && selectedDrill && (
@@ -177,6 +216,43 @@ function AppContent() {
 
         {view === 'settings' && <DataManager />}
       </main>
+
+      {pendingView && (
+        <div className="modal-overlay">
+          <div className="modal-content leave-prompt">
+            <div className="modal-header">
+              <h3>Leave this session?</h3>
+            </div>
+            <p>
+              You've recorded practice that hasn't been completed yet. Completing it keeps it
+              in your results; discarding throws it away.
+            </p>
+            <div className="leave-prompt-actions">
+              <button
+                className="btn-primary"
+                onClick={() => resolveLeave('complete')}
+                disabled={isLeaving}
+              >
+                {isLeaving ? 'Working...' : 'Complete & leave'}
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => setPendingView(null)}
+                disabled={isLeaving}
+              >
+                Keep practising
+              </button>
+              <button
+                className="btn-danger"
+                onClick={() => resolveLeave('discard')}
+                disabled={isLeaving}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <InstallPrompt />
       {DEBUG_MODE && <DebugPanel />}
